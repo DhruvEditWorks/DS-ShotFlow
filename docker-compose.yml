@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ds-shotflow-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ds_shotflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ds-shotflow-app
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/ds_shotflow?schema=public
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_AUTOSAVE_INTERVAL_MS: "3500"
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:

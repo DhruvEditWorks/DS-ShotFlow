@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ShotStatus {
+  TODO
+  READY
+  SHOOTING
+  COMPLETE
+  CUT
+}
+
+enum PresetKind {
+  SHOT_SIZE
+  SHOT_TYPE
+  MOVEMENT
+  CAMERA_HEIGHT
+  FRAMING
+  FOCUS
+  COLUMN
+}
+
+model User {
+  id        String    @id
+  email     String?   @unique
+  name      String?
+  avatarUrl String?
+  projects  Project[]
+  presets   Preset[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id            String             @id @default(cuid())
+  title         String
+  slug          String
+  ownerId       String
+  owner         User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  logline       String?
+  sourceType    String?
+  sourceName    String?
+  sourceText    String?
+  saveStatus    String             @default("local")
+  metadata      Json               @default("{}")
+  groups        SceneGroup[]
+  scenes        Scene[]
+  shots         Shot[]
+  versions      VersionHistory[]
+  driveSync     DriveSync?
+  columns       ColumnPreference[]
+  assets        Asset[]
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([ownerId])
+  @@unique([ownerId, slug])
+}
+
+model SceneGroup {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  color     String   @default("#d71920")
+  collapsed Boolean  @default(false)
+  order     Int      @default(0)
+  scenes    Scene[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, order])
+}
+
+model Scene {
+  id        String      @id @default(cuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  groupId   String?
+  group     SceneGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  number    String
+  heading   String
+  synopsis  String?
+  scriptText String?
+  color     String?
+  order     Int         @default(0)
+  progress  Int         @default(0)
+  shots     Shot[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([projectId, order])
+  @@index([groupId])
+}
+
+model Shot {
+  id            String     @id @default(cuid())
+  projectId     String
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId       String
+  scene         Scene      @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  shotNumber    String
+  description   String     @default("")
+  subject       String     @default("")
+  shotSize      String     @default("MS")
+  shotType      String     @default("Single")
+  movement      String     @default("Static")
+  duration      String     @default("00:05")
+  lens          String?
+  fps           String?
+  audio         String?
+  lighting      String?
+  notes         String?
+  props         String?
+  vfx           String?
+  cameraHeight  String?
+  framing       String?
+  focus         String?
+  imageUrl      String?
+  cloudinaryId  String?
+  status        ShotStatus @default(TODO)
+  order         Int        @default(0)
+  metadata      Json       @default("{}")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([projectId, order])
+  @@index([sceneId, order])
+}
+
+model Asset {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  shotId       String?
+  url          String
+  provider     String   @default("cloudinary")
+  providerId   String?
+  mimeType     String?
+  width        Int?
+  height       Int?
+  createdAt    DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model ColumnPreference {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key       String
+  label     String
+  enabled   Boolean  @default(true)
+  order     Int      @default(0)
+  width     Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, key])
+  @@index([projectId, order])
+}
+
+model Preset {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      PresetKind
+  label     String
+  value     String
+  metadata  Json       @default("{}")
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, kind, value])
+  @@index([userId, kind])
+}
+
+model VersionHistory {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label     String
+  payload   Json
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+model DriveSync {
+  id             String   @id @default(cuid())
+  projectId      String   @unique
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  driveFileId    String?
+  backupFolderId String?
+  lastSyncedAt   DateTime?
+  status         String   @default("idle")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
