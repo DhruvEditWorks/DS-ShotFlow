@@ -1,0 +1,3 @@
+{
+  "buildCommand": "DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/ds_shotflow?schema=public} npm run build"
+}
